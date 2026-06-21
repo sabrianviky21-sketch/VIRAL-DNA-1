@@ -94,17 +94,6 @@
   }
   .helix-wrap{ width:90px; height:90px; margin:0 auto; }
   #dropzone.dragover{ border-color:var(--blue); background:var(--blue-soft); }
-  .hook-type-chip{
-    font-size:.78rem; font-weight:600; padding:.5rem .9rem; border-radius:999px;
-    border:1.5px solid #E2E6FB; background:#fff; color:var(--muted);
-    cursor:pointer; transition:all .2s ease;
-  }
-  .hook-type-chip.selected{
-    background:var(--gradient); color:#fff; border-color:transparent;
-  }
-  #transcript-box{
-    max-height:10rem; overflow-y:auto;
-  }
 </style>
 </head>
 <body class="flex flex-col items-center px-4 py-10 pb-24">
@@ -206,19 +195,8 @@
         <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Langkah 2</p>
         <h2 class="text-xl font-bold mb-4">Bedah Konten</h2>
 
-        <div class="rounded-2xl p-5 mb-4" style="background:var(--blue-soft)">
-          <span class="chip chip-blue" id="hook-timestamp">0-3s</span>
-          <p class="font-semibold text-lg mb-1" id="hook-text">-</p>
-          <p class="text-sm text-slate-500" id="hook-why">-</p>
-        </div>
-
-        <div class="rounded-2xl p-5 mb-4 border border-slate-200">
-          <h3 class="font-semibold text-sm text-slate-500 uppercase tracking-wide mb-2">Transkrip Lengkap Video Asli</h3>
-          <p id="transcript-box" class="text-sm text-slate-600 leading-relaxed">-</p>
-        </div>
-
-        <h3 class="font-semibold text-sm text-slate-500 uppercase tracking-wide mb-2">Shot & Visual</h3>
-        <div id="shots-list" class="space-y-2 mb-4"></div>
+        <p class="text-sm text-slate-500 mb-4">Urut dari detik ke detik — apa yang muncul di layar/diucapkan, dan bagian mana yang berfungsi sebagai hook.</p>
+        <div id="timeline-list" class="space-y-2 mb-4"></div>
 
         <div class="grid grid-cols-2 gap-3">
           <div class="rounded-xl p-4" style="background:var(--purple-soft)">
@@ -235,17 +213,7 @@
       <div class="glass rounded-3xl p-7 fade-in">
         <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Langkah 3</p>
         <h2 class="text-xl font-bold mb-3">Mau bikin konten tentang apa?</h2>
-        <p class="text-sm text-slate-500 mb-3">Pola hook & pacing di atas akan dipakai lagi, tapi dengan topik yang kamu tentukan sendiri.</p>
-        <p class="text-sm font-semibold text-slate-600 mb-2">Pilih tipe hook yang mau dipakai (boleh lebih dari satu):</p>
-        <div id="hook-type-selector" class="flex flex-wrap gap-2 mb-5">
-          <button type="button" class="hook-type-chip" data-type="Hook Negatif (takut/masalah)">😱 Negatif</button>
-          <button type="button" class="hook-type-chip" data-type="Hook Positif (gain/untung)">🚀 Positif / Gain</button>
-          <button type="button" class="hook-type-chip" data-type="Hook Penasaran (curiosity gap)">🤔 Penasaran</button>
-          <button type="button" class="hook-type-chip" data-type="Killer Hook (klaim tegas & berani)">🔥 Killer Hook</button>
-          <button type="button" class="hook-type-chip" data-type="WTF Hook (shock/kontroversial)">😳 WTF Hook</button>
-          <button type="button" class="hook-type-chip" data-type="Hook Storytelling">📖 Storytelling</button>
-          <button type="button" class="hook-type-chip" data-type="Hook Angka/Data mengejutkan">📊 Angka/Data</button>
-        </div>
+        <p class="text-sm text-slate-500 mb-3">Pola hook, pacing, dan gaya di atas akan dipakai ulang persis, cuma topiknya kamu tentukan sendiri.</p>
         <input type="text" id="topic-input" placeholder="Contoh: skincare untuk remaja, tips keuangan freelancer, kucing lucu..."
           class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]">
         <button id="btn-generate" class="gradient-btn w-full font-bold py-3.5 rounded-xl" disabled>
@@ -376,18 +344,24 @@
   }
 
   const BREAKDOWN_PROMPT = `Kamu adalah sinematografer dan content strategist video pendek (TikTok/Reels).
-Tonton video ini dari awal sampai akhir, lalu bedah secara visual dan naratif.
+Tonton video ini dari awal sampai akhir, lalu bedah secara kronologis, detik demi detik, sejelas mungkin.
 
 Balas HANYA JSON valid (tanpa markdown code fence, tanpa teks lain) dengan struktur tepat seperti ini:
 {
-  "hook": {"timestamp": "0-3s", "isi": "apa yang diucapkan/ditampilkan di hook", "alasan": "kenapa ini efektif menahan penonton"},
-  "transkrip_lengkap": "tulis ulang kata demi kata semua yang diucapkan di video ini dari awal sampai akhir, urut sesuai waktu",
-  "shots": [
-    {"timestamp": "0-2s", "shot_type": "close up/medium/wide", "angle": "eye level/low angle/dll", "visual_note": "apa yang terjadi di scene ini"}
+  "timeline": [
+    {
+      "timestamp": "0-3s",
+      "teks_atau_ucapan": "tulis ulang persis apa yang diucapkan/ditampilkan sebagai teks di layar pada rentang waktu ini",
+      "shot_type": "close up/medium/wide, dan angle kamera",
+      "is_hook": true,
+      "catatan_hook": "kalau is_hook true, jelaskan kenapa bagian ini efektif jadi hook/penahan penonton. Kalau bukan hook, isi string kosong."
+    }
   ],
-  "pacing": "deskripsi ritme editing",
-  "emotional_trigger": "pemicu emosi utama"
-}`;
+  "pacing": "deskripsi ritme editing dari awal sampai akhir",
+  "emotional_trigger": "pemicu emosi utama sepanjang video"
+}
+
+Pastikan "timeline" mencakup SELURUH video dari 0 detik sampai akhir, dipecah per 2-4 detik per segmen, bukan cuma bagian hook saja.`;
 
   async function callGemini(endpoint, payload){
     if (!GEMINI_API_KEY) {
@@ -433,21 +407,19 @@ Balas HANYA JSON valid (tanpa markdown code fence, tanpa teks lain) dengan struk
   });
 
   function renderBreakdown(data){
-    document.getElementById('hook-timestamp').textContent = data.hook?.timestamp || "-";
-    document.getElementById('hook-text').textContent = data.hook?.isi || "-";
-    document.getElementById('hook-why').textContent = data.hook?.alasan || "-";
-    document.getElementById('transcript-box').textContent = data.transkrip_lengkap || "-";
-
-    const shotsList = document.getElementById('shots-list');
-    shotsList.innerHTML = "";
-    (data.shots || []).forEach(shot => {
-      shotsList.innerHTML += `
-        <div class="border border-slate-200 rounded-xl p-3">
-          <div class="flex gap-2 items-center mb-1">
-            <span class="chip chip-purple">${shot.timestamp || ''}</span>
-            <span class="text-sm font-medium">${shot.shot_type || ''} · ${shot.angle || ''}</span>
+    const list = document.getElementById('timeline-list');
+    list.innerHTML = "";
+    (data.timeline || []).forEach(seg => {
+      const isHook = seg.is_hook;
+      list.innerHTML += `
+        <div class="rounded-xl p-4 border ${isHook ? 'border-2' : 'border-slate-200'}" style="${isHook ? 'border-color:#4D6BFE;background:var(--blue-soft)' : ''}">
+          <div class="flex gap-2 items-center mb-1.5 flex-wrap">
+            <span class="chip ${isHook ? 'chip-blue' : 'chip-purple'}">${seg.timestamp || ''}</span>
+            ${isHook ? '<span class="chip" style="background:#4D6BFE;color:#fff">🎣 HOOK</span>' : ''}
+            <span class="text-xs font-medium text-slate-500">${seg.shot_type || ''}</span>
           </div>
-          <p class="text-sm text-slate-500">${shot.visual_note || ''}</p>
+          <p class="text-sm font-medium text-slate-700 mb-1">"${seg.teks_atau_ucapan || ''}"</p>
+          ${isHook && seg.catatan_hook ? `<p class="text-sm text-blue-600 italic">💡 ${seg.catatan_hook}</p>` : ''}
         </div>`;
     });
 
@@ -457,24 +429,9 @@ Balas HANYA JSON valid (tanpa markdown code fence, tanpa teks lain) dengan struk
 
   const topicInput = document.getElementById('topic-input');
   const btnGenerate = document.getElementById('btn-generate');
-  let selectedHookTypes = [];
-
-  function updateGenerateButton(){
-    btnGenerate.disabled = !(topicInput.value.trim().length > 0 && selectedHookTypes.length > 0);
-  }
-
-  document.querySelectorAll('.hook-type-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      chip.classList.toggle('selected');
-      const type = chip.dataset.type;
-      selectedHookTypes = chip.classList.contains('selected')
-        ? [...selectedHookTypes, type]
-        : selectedHookTypes.filter(t => t !== type);
-      updateGenerateButton();
-    });
+  topicInput.addEventListener('input', () => {
+    btnGenerate.disabled = topicInput.value.trim().length === 0;
   });
-
-  topicInput.addEventListener('input', updateGenerateButton);
 
   btnGenerate.addEventListener('click', async () => {
     const topicError = document.getElementById('topic-error');
@@ -483,18 +440,16 @@ Balas HANYA JSON valid (tanpa markdown code fence, tanpa teks lain) dengan struk
     document.getElementById('loading-text').textContent = "Menyusun 10 script...";
     showSection('step-loading');
 
-    const generatePrompt = `Berikut hasil bedah pola viral sebuah video pendek (dalam JSON):
+    const generatePrompt = `Berikut hasil bedah pola viral sebuah video pendek, lengkap timeline detik per detiknya (dalam JSON):
 ${JSON.stringify(breakdownData)}
 
 Pengguna ingin membuat konten baru dengan topik: "${topicInput.value.trim()}"
 
-Tipe hook yang WAJIB dipakai, distribusikan ke 10 script ini (boleh diulang kalau perlu): ${selectedHookTypes.join(", ")}
-
-Buatkan 10 variasi konten baru yang memakai pola pacing dan pemicu emosi yang SAMA seperti hasil bedah di atas, tapi disesuaikan dengan topik yang diminta dan WAJIB pakai salah satu tipe hook di atas untuk tiap script.
+Buatkan 10 variasi konten baru yang memakai POLA HOOK, PACING, dan PEMICU EMOSI YANG SAMA PERSIS seperti hasil bedah timeline di atas (terutama segmen yang is_hook=true), tapi isinya disesuaikan dengan topik yang diminta. Jangan ganti-ganti gaya hook-nya, cukup ganti isi/topiknya saja.
 
 Balas HANYA JSON list valid (tanpa markdown fence, tanpa teks lain):
 [
-  {"tipe_hook": "salah satu dari tipe hook yang dipilih", "hook": "kalimat pembuka 3 detik pertama", "visual": "ide visual/teks di layar", "script": "naskah ucapan lengkap", "cta": "ajakan bertindak penutup"}
+  {"hook": "kalimat pembuka 3 detik pertama, gaya sama seperti hook asli", "visual": "ide visual/teks di layar", "script": "naskah ucapan lengkap", "cta": "ajakan bertindak penutup"}
 ]`;
 
     try {
@@ -518,10 +473,7 @@ Balas HANYA JSON list valid (tanpa markdown fence, tanpa teks lain):
     scripts.forEach((item, i) => {
       grid.innerHTML += `
         <div class="glass rounded-2xl p-5 fade-in" style="animation-delay:${i * 0.05}s">
-          <div class="flex justify-between items-center mb-3">
-            <p class="text-xs font-bold text-slate-400">SCRIPT #${i + 1}</p>
-            <span class="chip chip-purple">${item.tipe_hook || ''}</span>
-          </div>
+          <p class="text-xs font-bold text-slate-400 mb-3">SCRIPT #${i + 1}</p>
           <p class="chip chip-blue">HOOK</p>
           <p class="font-semibold mb-3">"${item.hook || ''}"</p>
           <p class="chip chip-purple">VISUAL</p>
