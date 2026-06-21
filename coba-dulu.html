@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Viral DNA AI — Bedah Konten & Generate Script</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{
+    --bg:#F5F7FF;
+    --surface:#FFFFFF;
+    --ink:#1E1B4B;
+    --muted:#6B7280;
+    --blue:#4D6BFE;
+    --blue-soft:#E8EDFF;
+    --purple:#8B5CF6;
+    --purple-soft:#F1E9FE;
+    --gradient: linear-gradient(135deg, #4D6BFE 0%, #8B5CF6 100%);
+  }
+  *{ font-family:'Poppins', sans-serif; }
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    min-height:100vh;
+    overflow-x:hidden;
+    position:relative;
+  }
+  .blob{
+    position:fixed;
+    border-radius:50%;
+    filter:blur(70px);
+    opacity:.45;
+    z-index:-1;
+    animation:drift 22s ease-in-out infinite;
+  }
+  .blob-1{ width:420px; height:420px; background:#4D6BFE; top:-120px; left:-100px; }
+  .blob-2{ width:380px; height:380px; background:#8B5CF6; bottom:-140px; right:-100px; animation-delay:-8s; }
+  @keyframes drift{
+    0%,100%{ transform:translate(0,0) scale(1); }
+    50%{ transform:translate(40px,-30px) scale(1.12); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .blob{ animation:none; }
+  }
+  .glass{
+    background:var(--surface);
+    border:1px solid rgba(79,107,254,0.08);
+    box-shadow:0 10px 40px -10px rgba(77,107,254,0.18);
+  }
+  .gradient-btn{
+    background:var(--gradient);
+    color:#fff;
+    transition:transform .2s ease, box-shadow .2s ease, opacity .2s ease;
+  }
+  .gradient-btn:hover:not(:disabled){
+    transform:translateY(-2px);
+    box-shadow:0 14px 30px -8px rgba(139,92,246,0.45);
+  }
+  .gradient-btn:disabled{ opacity:.4; cursor:not-allowed; transform:none; box-shadow:none; }
+  .gradient-text{
+    background:var(--gradient);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  .step-dot{
+    width:34px; height:34px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:600; font-size:.85rem;
+    background:#EEF1FF; color:var(--muted);
+    border:2px solid #E2E6FB;
+    transition:all .3s ease;
+  }
+  .step-dot.active{ background:var(--gradient); color:#fff; border-color:transparent; }
+  .step-dot.done{ background:var(--blue-soft); color:var(--blue); border-color:var(--blue); }
+  .step-line{ flex:1; height:2px; background:#E2E6FB; }
+  .step-line.done{ background:var(--blue); }
+  .fade-in{ animation:fadeIn .5s ease forwards; }
+  @keyframes fadeIn{
+    from{ opacity:0; transform:translateY(14px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  .chip{
+    display:inline-block; font-size:.72rem; font-weight:600;
+    padding:.25rem .6rem; border-radius:999px; margin-bottom:.4rem;
+  }
+  .chip-blue{ background:var(--blue-soft); color:var(--blue); }
+  .chip-purple{ background:var(--purple-soft); color:var(--purple); }
+  textarea, input[type="text"]{
+    font-family:'Poppins', sans-serif;
+  }
+  .helix-wrap{ width:90px; height:90px; margin:0 auto; }
+  #dropzone.dragover{ border-color:var(--blue); background:var(--blue-soft); }
+  .hook-type-chip{
+    font-size:.78rem; font-weight:600; padding:.5rem .9rem; border-radius:999px;
+    border:1.5px solid #E2E6FB; background:#fff; color:var(--muted);
+    cursor:pointer; transition:all .2s ease;
+  }
+  .hook-type-chip.selected{
+    background:var(--gradient); color:#fff; border-color:transparent;
+  }
+  #transcript-box{
+    max-height:10rem; overflow-y:auto;
+  }
+</style>
+</head>
+<body class="flex flex-col items-center px-4 py-10 pb-24">
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+
+  <!-- HEADER -->
+  <header class="text-center max-w-xl mx-auto mb-8 fade-in">
+    <div class="flex items-center justify-center gap-2 mb-3">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+        <path d="M5 3C5 7 19 7 19 11C19 15 5 15 5 19" stroke="#4D6BFE" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M19 3C19 7 5 7 5 11C5 15 19 15 19 19" stroke="#8B5CF6" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      <span class="font-extrabold text-sm tracking-widest uppercase text-slate-500">Viral DNA AI</span>
+    </div>
+    <h1 class="text-3xl md:text-4xl font-extrabold gradient-text leading-tight">
+      Bedah hook & visualnya,<br/>lalu bikin versi kamu sendiri.
+    </h1>
+    <p class="text-slate-500 mt-3">Upload video → kebaca hook & timing-nya → kamu tentukan topiknya → keluar 10 script siap rekam.</p>
+  </header>
+
+  <!-- SETUP API KEY -->
+  <section class="glass rounded-3xl p-7 w-full max-w-2xl mb-6 fade-in">
+    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Setup Sekali Saja</p>
+    <h2 class="text-xl font-bold mb-3">🔑 Masukkan API Key Gemini Kamu</h2>
+    <p class="text-sm text-slate-500 mb-4">
+      Belum punya? Buka <a href="https://aistudio.google.com/apikey" target="_blank" class="text-blue-600 underline font-semibold">aistudio.google.com</a>,
+      klik tombol "Create API Key" (gratis, tanpa kartu kredit), lalu salin hasilnya ke kolom di bawah ini.
+    </p>
+    <div class="flex gap-2">
+      <input type="password" id="api-key-input" placeholder="Tempel API Key di sini..."
+        class="flex-1 border border-slate-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]">
+      <button type="button" id="toggle-key-visibility" class="px-4 rounded-xl border border-slate-300 text-sm font-semibold text-slate-500">👁</button>
+    </div>
+    <p id="api-key-status" class="text-sm mt-3 text-slate-400">Belum diisi.</p>
+  </section>
+
+  <!-- STEP INDICATOR -->
+  <div class="flex items-center w-full max-w-md mb-8 fade-in" id="stepper">
+    <div class="step-dot active" id="dot-1">1</div>
+    <div class="step-line" id="line-1"></div>
+    <div class="step-dot" id="dot-2">2</div>
+    <div class="step-line" id="line-2"></div>
+    <div class="step-dot" id="dot-3">3</div>
+  </div>
+
+  <main class="w-full max-w-2xl">
+
+    <!-- STEP 1: UPLOAD -->
+    <section id="step-upload" class="glass rounded-3xl p-8 fade-in">
+      <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Langkah 1</p>
+      <h2 class="text-xl font-bold mb-5">Upload video yang mau dibedah</h2>
+
+      <div id="dropzone" class="border-2 border-dashed border-slate-300 rounded-2xl p-10 text-center cursor-pointer transition" onclick="document.getElementById('file-input').click()">
+        <svg class="mx-auto h-10 w-10 mb-3" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="1.6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+        </svg>
+        <p id="file-label" class="font-medium text-slate-600">Klik atau tarik file video ke sini</p>
+        <p class="text-slate-400 text-sm mt-1">MP4, maksimal 30MB</p>
+        <input type="file" id="file-input" accept="video/mp4,video/quicktime,video/webm" class="hidden">
+      </div>
+
+      <label class="flex items-start gap-3 mt-6 cursor-pointer">
+        <input type="checkbox" id="consent-check" class="mt-1 w-4 h-4 accent-[#4D6BFE]">
+        <span class="text-sm text-slate-500">Saya berhak menggunakan video ini untuk dianalisis. Saya mengerti video tidak disimpan permanen di server.</span>
+      </label>
+
+      <button id="btn-breakdown" disabled class="gradient-btn w-full font-bold py-3.5 rounded-xl mt-6">
+        Bongkar DNA Video Ini
+      </button>
+      <p id="upload-error" class="text-red-500 text-sm mt-3 hidden"></p>
+    </section>
+
+    <!-- LOADING (dipakai ulang di tiap step) -->
+    <section id="step-loading" class="glass rounded-3xl p-10 text-center hidden">
+      <div class="helix-wrap mb-4">
+        <svg viewBox="0 0 60 90" width="100%" height="100%">
+          <path d="M8 5 C8 25 52 25 52 45 C52 65 8 65 8 85" fill="none" stroke="#4D6BFE" stroke-width="3" stroke-linecap="round">
+            <animate attributeName="d" dur="2.4s" repeatCount="indefinite"
+              values="M8 5 C8 25 52 25 52 45 C52 65 8 65 8 85;
+                      M52 5 C52 25 8 25 8 45 C8 65 52 65 52 85;
+                      M8 5 C8 25 52 25 52 45 C52 65 8 65 8 85"/>
+          </path>
+          <path d="M52 5 C52 25 8 25 8 45 C8 65 52 65 52 85" fill="none" stroke="#8B5CF6" stroke-width="3" stroke-linecap="round">
+            <animate attributeName="d" dur="2.4s" repeatCount="indefinite"
+              values="M52 5 C52 25 8 25 8 45 C8 65 52 65 52 85;
+                      M8 5 C8 25 52 25 52 45 C52 65 8 65 8 85;
+                      M52 5 C52 25 8 25 8 45 C8 65 52 65 52 85"/>
+          </path>
+        </svg>
+      </div>
+      <p id="loading-text" class="font-semibold gradient-text">Memproses...</p>
+    </section>
+
+    <!-- STEP 2: BREAKDOWN -->
+    <section id="step-breakdown" class="hidden space-y-5">
+      <div class="glass rounded-3xl p-7 fade-in">
+        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Langkah 2</p>
+        <h2 class="text-xl font-bold mb-4">Bedah Konten</h2>
+
+        <div class="rounded-2xl p-5 mb-4" style="background:var(--blue-soft)">
+          <span class="chip chip-blue" id="hook-timestamp">0-3s</span>
+          <p class="font-semibold text-lg mb-1" id="hook-text">-</p>
+          <p class="text-sm text-slate-500" id="hook-why">-</p>
+        </div>
+
+        <div class="rounded-2xl p-5 mb-4 border border-slate-200">
+          <h3 class="font-semibold text-sm text-slate-500 uppercase tracking-wide mb-2">Transkrip Lengkap Video Asli</h3>
+          <p id="transcript-box" class="text-sm text-slate-600 leading-relaxed">-</p>
+        </div>
+
+        <h3 class="font-semibold text-sm text-slate-500 uppercase tracking-wide mb-2">Shot & Visual</h3>
+        <div id="shots-list" class="space-y-2 mb-4"></div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="rounded-xl p-4" style="background:var(--purple-soft)">
+            <p class="text-xs font-semibold text-purple-500 mb-1">PACING</p>
+            <p class="text-sm" id="pacing-text">-</p>
+          </div>
+          <div class="rounded-xl p-4" style="background:var(--purple-soft)">
+            <p class="text-xs font-semibold text-purple-500 mb-1">PEMICU EMOSI</p>
+            <p class="text-sm" id="trigger-text">-</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass rounded-3xl p-7 fade-in">
+        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Langkah 3</p>
+        <h2 class="text-xl font-bold mb-3">Mau bikin konten tentang apa?</h2>
+        <p class="text-sm text-slate-500 mb-3">Pola hook & pacing di atas akan dipakai lagi, tapi dengan topik yang kamu tentukan sendiri.</p>
+        <p class="text-sm font-semibold text-slate-600 mb-2">Pilih tipe hook yang mau dipakai (boleh lebih dari satu):</p>
+        <div id="hook-type-selector" class="flex flex-wrap gap-2 mb-5">
+          <button type="button" class="hook-type-chip" data-type="Hook Negatif (takut/masalah)">😱 Negatif</button>
+          <button type="button" class="hook-type-chip" data-type="Hook Positif (gain/untung)">🚀 Positif / Gain</button>
+          <button type="button" class="hook-type-chip" data-type="Hook Penasaran (curiosity gap)">🤔 Penasaran</button>
+          <button type="button" class="hook-type-chip" data-type="Killer Hook (klaim tegas & berani)">🔥 Killer Hook</button>
+          <button type="button" class="hook-type-chip" data-type="WTF Hook (shock/kontroversial)">😳 WTF Hook</button>
+          <button type="button" class="hook-type-chip" data-type="Hook Storytelling">📖 Storytelling</button>
+          <button type="button" class="hook-type-chip" data-type="Hook Angka/Data mengejutkan">📊 Angka/Data</button>
+        </div>
+        <input type="text" id="topic-input" placeholder="Contoh: skincare untuk remaja, tips keuangan freelancer, kucing lucu..."
+          class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]">
+        <button id="btn-generate" class="gradient-btn w-full font-bold py-3.5 rounded-xl" disabled>
+          Generate 10 Script
+        </button>
+        <p id="topic-error" class="text-red-500 text-sm mt-3 hidden"></p>
+      </div>
+    </section>
+
+    <!-- STEP 3: 10 SCRIPTS -->
+    <section id="step-scripts" class="hidden">
+      <div class="flex items-center justify-between mb-5 fade-in">
+        <h2 class="text-xl font-bold">10 Script Siap Pakai</h2>
+        <button onclick="location.reload()" class="text-sm font-semibold text-slate-500 hover:text-slate-700">Mulai Baru</button>
+      </div>
+      <div id="scripts-grid" class="grid grid-cols-1 md:grid-cols-2 gap-5"></div>
+    </section>
+
+  </main>
+
+<script>
+  // ============================================================
+  // VERSI COBA-COBA DI LAPTOP SENDIRI — JANGAN DI-UPLOAD KE INTERNET!
+  // Key ini cuma aman selama file ini cuma kebuka di komputer kamu sendiri.
+  // Begitu sudah oke dan mau ditayangin ke orang lain, balik ke index.html
+  // + functions/ (yang lebih aman, key-nya disembunyikan di server).
+  // ============================================================
+  let GEMINI_API_KEY = "";
+  const apiKeyInput = document.getElementById('api-key-input');
+  const apiKeyStatus = document.getElementById('api-key-status');
+  const toggleKeyBtn = document.getElementById('toggle-key-visibility');
+
+  apiKeyInput.addEventListener('input', () => {
+    GEMINI_API_KEY = apiKeyInput.value.trim();
+    if (GEMINI_API_KEY.length > 10) {
+      apiKeyStatus.textContent = "✅ API key terisi, siap dipakai.";
+      apiKeyStatus.className = "text-sm mt-3 text-emerald-600 font-semibold";
+    } else {
+      apiKeyStatus.textContent = "Belum diisi.";
+      apiKeyStatus.className = "text-sm mt-3 text-slate-400";
+    }
+    updateBreakdownButton();
+  });
+
+  toggleKeyBtn.addEventListener('click', () => {
+    apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
+  });
+  const GEMINI_MODEL = "gemini-3.1-flash-lite";
+  const DIRECT_GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
+  const MAX_FILE_MB = 30;
+  let selectedFile = null;
+  let breakdownData = null;
+
+  const fileInput = document.getElementById('file-input');
+  const dropzone = document.getElementById('dropzone');
+  const fileLabel = document.getElementById('file-label');
+  const consentCheck = document.getElementById('consent-check');
+  const btnBreakdown = document.getElementById('btn-breakdown');
+  const uploadError = document.getElementById('upload-error');
+
+  function updateBreakdownButton(){
+    btnBreakdown.disabled = !(selectedFile && consentCheck.checked && GEMINI_API_KEY.length > 10);
+  }
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length === 0) return;
+    const f = fileInput.files[0];
+    if (f.size > MAX_FILE_MB * 1024 * 1024) {
+      showError(uploadError, `Ukuran video maksimal ${MAX_FILE_MB}MB.`);
+      fileInput.value = "";
+      return;
+    }
+    hideError(uploadError);
+    selectedFile = f;
+    fileLabel.textContent = f.name;
+    updateBreakdownButton();
+  });
+
+  consentCheck.addEventListener('change', updateBreakdownButton);
+
+  ['dragover','dragenter'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add('dragover'); }));
+  ['dragleave','drop'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove('dragover'); }));
+  dropzone.addEventListener('drop', e => {
+    if (e.dataTransfer.files.length > 0) {
+      fileInput.files = e.dataTransfer.files;
+      fileInput.dispatchEvent(new Event('change'));
+    }
+  });
+
+  function showError(el, msg){ el.textContent = msg; el.classList.remove('hidden'); }
+  function hideError(el){ el.classList.add('hidden'); }
+
+  function setStep(n){
+    for (let i = 1; i <= 3; i++) {
+      const dot = document.getElementById('dot-' + i);
+      dot.classList.remove('active','done');
+      if (i < n) dot.classList.add('done');
+      if (i === n) dot.classList.add('active');
+    }
+    for (let i = 1; i <= 2; i++) {
+      document.getElementById('line-' + i).classList.toggle('done', i < n);
+    }
+  }
+
+  function showSection(id){
+    ['step-upload','step-loading','step-breakdown','step-scripts'].forEach(s => {
+      document.getElementById(s).classList.toggle('hidden', s !== id);
+    });
+  }
+
+  function fileToBase64(file){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function extractJSON(raw){
+    const start = Math.min(...['{', '['].map(c => raw.indexOf(c)).filter(i => i !== -1));
+    const lastBrace = raw.lastIndexOf('}');
+    const lastBracket = raw.lastIndexOf(']');
+    const end = Math.max(lastBrace, lastBracket);
+    if (!isFinite(start) || end === -1) throw new Error("AI tidak mengembalikan format JSON.");
+    return JSON.parse(raw.substring(start, end + 1));
+  }
+
+  const BREAKDOWN_PROMPT = `Kamu adalah sinematografer dan content strategist video pendek (TikTok/Reels).
+Tonton video ini dari awal sampai akhir, lalu bedah secara visual dan naratif.
+
+Balas HANYA JSON valid (tanpa markdown code fence, tanpa teks lain) dengan struktur tepat seperti ini:
+{
+  "hook": {"timestamp": "0-3s", "isi": "apa yang diucapkan/ditampilkan di hook", "alasan": "kenapa ini efektif menahan penonton"},
+  "transkrip_lengkap": "tulis ulang kata demi kata semua yang diucapkan di video ini dari awal sampai akhir, urut sesuai waktu",
+  "shots": [
+    {"timestamp": "0-2s", "shot_type": "close up/medium/wide", "angle": "eye level/low angle/dll", "visual_note": "apa yang terjadi di scene ini"}
+  ],
+  "pacing": "deskripsi ritme editing",
+  "emotional_trigger": "pemicu emosi utama"
+}`;
+
+  async function callGemini(endpoint, payload){
+    if (!GEMINI_API_KEY) {
+      throw new Error("API key belum diisi. Scroll ke atas, isi dulu di kolom 'Masukkan API Key Gemini Kamu'.");
+    }
+    const res = await fetch(DIRECT_GEMINI_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
+      body: JSON.stringify(payload)
+    });
+    const text = await res.text();
+    if (!res.ok) throw new Error("Server AI gagal merespons: " + text.slice(0,200));
+    const json = JSON.parse(text);
+    if (!json.candidates || json.candidates.length === 0) {
+      throw new Error("AI tidak memberi jawaban. Mungkin video terdeteksi konten sensitif.");
+    }
+    return extractJSON(json.candidates[0].content.parts[0].text);
+  }
+
+  btnBreakdown.addEventListener('click', async () => {
+    hideError(uploadError);
+    setStep(2);
+    document.getElementById('loading-text').textContent = "Menonton & membedah video...";
+    showSection('step-loading');
+
+    try {
+      const base64 = await fileToBase64(selectedFile);
+      const payload = {
+        contents: [{ parts: [
+          { inline_data: { mime_type: selectedFile.type || "video/mp4", data: base64 } },
+          { text: BREAKDOWN_PROMPT }
+        ]}],
+        generationConfig: { responseMimeType: "application/json" }
+      };
+      breakdownData = await callGemini('/api/breakdown', payload);
+      renderBreakdown(breakdownData);
+      showSection('step-breakdown');
+    } catch (err) {
+      showError(uploadError, err.message);
+      setStep(1);
+      showSection('step-upload');
+    }
+  });
+
+  function renderBreakdown(data){
+    document.getElementById('hook-timestamp').textContent = data.hook?.timestamp || "-";
+    document.getElementById('hook-text').textContent = data.hook?.isi || "-";
+    document.getElementById('hook-why').textContent = data.hook?.alasan || "-";
+    document.getElementById('transcript-box').textContent = data.transkrip_lengkap || "-";
+
+    const shotsList = document.getElementById('shots-list');
+    shotsList.innerHTML = "";
+    (data.shots || []).forEach(shot => {
+      shotsList.innerHTML += `
+        <div class="border border-slate-200 rounded-xl p-3">
+          <div class="flex gap-2 items-center mb-1">
+            <span class="chip chip-purple">${shot.timestamp || ''}</span>
+            <span class="text-sm font-medium">${shot.shot_type || ''} · ${shot.angle || ''}</span>
+          </div>
+          <p class="text-sm text-slate-500">${shot.visual_note || ''}</p>
+        </div>`;
+    });
+
+    document.getElementById('pacing-text').textContent = data.pacing || "-";
+    document.getElementById('trigger-text').textContent = data.emotional_trigger || "-";
+  }
+
+  const topicInput = document.getElementById('topic-input');
+  const btnGenerate = document.getElementById('btn-generate');
+  let selectedHookTypes = [];
+
+  function updateGenerateButton(){
+    btnGenerate.disabled = !(topicInput.value.trim().length > 0 && selectedHookTypes.length > 0);
+  }
+
+  document.querySelectorAll('.hook-type-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      chip.classList.toggle('selected');
+      const type = chip.dataset.type;
+      selectedHookTypes = chip.classList.contains('selected')
+        ? [...selectedHookTypes, type]
+        : selectedHookTypes.filter(t => t !== type);
+      updateGenerateButton();
+    });
+  });
+
+  topicInput.addEventListener('input', updateGenerateButton);
+
+  btnGenerate.addEventListener('click', async () => {
+    const topicError = document.getElementById('topic-error');
+    hideError(topicError);
+    setStep(3);
+    document.getElementById('loading-text').textContent = "Menyusun 10 script...";
+    showSection('step-loading');
+
+    const generatePrompt = `Berikut hasil bedah pola viral sebuah video pendek (dalam JSON):
+${JSON.stringify(breakdownData)}
+
+Pengguna ingin membuat konten baru dengan topik: "${topicInput.value.trim()}"
+
+Tipe hook yang WAJIB dipakai, distribusikan ke 10 script ini (boleh diulang kalau perlu): ${selectedHookTypes.join(", ")}
+
+Buatkan 10 variasi konten baru yang memakai pola pacing dan pemicu emosi yang SAMA seperti hasil bedah di atas, tapi disesuaikan dengan topik yang diminta dan WAJIB pakai salah satu tipe hook di atas untuk tiap script.
+
+Balas HANYA JSON list valid (tanpa markdown fence, tanpa teks lain):
+[
+  {"tipe_hook": "salah satu dari tipe hook yang dipilih", "hook": "kalimat pembuka 3 detik pertama", "visual": "ide visual/teks di layar", "script": "naskah ucapan lengkap", "cta": "ajakan bertindak penutup"}
+]`;
+
+    try {
+      const payload = {
+        contents: [{ parts: [{ text: generatePrompt }] }],
+        generationConfig: { responseMimeType: "application/json" }
+      };
+      const scripts = await callGemini('/api/generate', payload);
+      renderScripts(scripts);
+      showSection('step-scripts');
+    } catch (err) {
+      showError(topicError, err.message);
+      setStep(2);
+      showSection('step-breakdown');
+    }
+  });
+
+  function renderScripts(scripts){
+    const grid = document.getElementById('scripts-grid');
+    grid.innerHTML = "";
+    scripts.forEach((item, i) => {
+      grid.innerHTML += `
+        <div class="glass rounded-2xl p-5 fade-in" style="animation-delay:${i * 0.05}s">
+          <div class="flex justify-between items-center mb-3">
+            <p class="text-xs font-bold text-slate-400">SCRIPT #${i + 1}</p>
+            <span class="chip chip-purple">${item.tipe_hook || ''}</span>
+          </div>
+          <p class="chip chip-blue">HOOK</p>
+          <p class="font-semibold mb-3">"${item.hook || ''}"</p>
+          <p class="chip chip-purple">VISUAL</p>
+          <p class="text-sm text-slate-600 mb-3">${item.visual || ''}</p>
+          <p class="chip" style="background:#FFF1E0;color:#C2640A">SCRIPT</p>
+          <p class="text-sm text-slate-700 mb-3 leading-relaxed">${item.script || ''}</p>
+          <p class="chip" style="background:#FDE4E4;color:#C23B3B">CTA</p>
+          <p class="text-sm text-slate-600 italic">${item.cta || ''}</p>
+        </div>`;
+    });
+  }
+</script>
+</body>
+</html>
