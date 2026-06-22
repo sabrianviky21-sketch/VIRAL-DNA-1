@@ -217,16 +217,30 @@
         <input type="text" id="topic-input" placeholder="Contoh: skincare untuk remaja, tips keuangan freelancer, kucing lucu..."
           class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]">
         <button id="btn-generate" class="gradient-btn w-full font-bold py-3.5 rounded-xl" disabled>
-          Generate 10 Script
+          Cari 10 Ide Terbaik
         </button>
         <p id="topic-error" class="text-red-500 text-sm mt-3 hidden"></p>
       </div>
     </section>
 
-    <!-- STEP 3: 10 SCRIPTS -->
+    <!-- STEP 3: PILIH IDE -->
+    <section id="step-ideas" class="hidden">
+      <div class="flex items-center justify-between mb-5 fade-in">
+        <h2 class="text-xl font-bold">Pilih Ide yang Mau Dijadikan Script</h2>
+        <button id="btn-ideas-again" class="text-sm font-semibold text-slate-500 hover:text-slate-700">🔄 Cari Ide Lain</button>
+      </div>
+      <p class="text-sm text-slate-500 mb-4">Semua ide tercentang otomatis. Hilangkan centang ide yang gak kamu suka, sisanya yang akan dibuatkan script lengkap.</p>
+      <div id="ideas-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6"></div>
+      <button id="btn-make-scripts" class="gradient-btn w-full font-bold py-3.5 rounded-xl" disabled>
+        Generate Script Dari Ide Terpilih
+      </button>
+      <p id="ideas-error" class="text-red-500 text-sm mt-3 hidden"></p>
+    </section>
+
+    <!-- STEP 4: SCRIPTS -->
     <section id="step-scripts" class="hidden">
       <div class="flex items-center justify-between mb-5 fade-in">
-        <h2 class="text-xl font-bold">10 Script Siap Pakai</h2>
+        <h2 class="text-xl font-bold">Script Siap Pakai</h2>
         <button onclick="location.reload()" class="text-sm font-semibold text-slate-500 hover:text-slate-700">Mulai Baru</button>
       </div>
       <div id="scripts-grid" class="grid grid-cols-1 md:grid-cols-2 gap-5"></div>
@@ -320,7 +334,7 @@
   }
 
   function showSection(id){
-    ['step-upload','step-loading','step-breakdown','step-scripts'].forEach(s => {
+    ['step-upload','step-loading','step-breakdown','step-ideas','step-scripts'].forEach(s => {
       document.getElementById(s).classList.toggle('hidden', s !== id);
     });
   }
@@ -335,12 +349,28 @@
   }
 
   function extractJSON(raw){
-    const start = Math.min(...['{', '['].map(c => raw.indexOf(c)).filter(i => i !== -1));
-    const lastBrace = raw.lastIndexOf('}');
-    const lastBracket = raw.lastIndexOf(']');
-    const end = Math.max(lastBrace, lastBracket);
-    if (!isFinite(start) || end === -1) throw new Error("AI tidak mengembalikan format JSON.");
-    return JSON.parse(raw.substring(start, end + 1));
+    const text = raw.trim();
+    const openers = { '{': '}', '[': ']' };
+    let startIdx = -1, starter = null;
+    for (let i = 0; i < text.length; i++) {
+      if (text[i] === '{' || text[i] === '[') { startIdx = i; starter = text[i]; break; }
+    }
+    if (startIdx === -1) throw new Error('AI tidak mengembalikan format JSON.');
+
+    const closer = openers[starter];
+    let depth = 0, endIdx = -1, inString = false, escapeNext = false;
+
+    for (let i = startIdx; i < text.length; i++) {
+      const ch = text[i];
+      if (escapeNext) { escapeNext = false; continue; }
+      if (ch === '\\') { escapeNext = true; continue; }
+      if (ch === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (ch === starter) depth++;
+      else if (ch === closer) { depth--; if (depth === 0) { endIdx = i; break; } }
+    }
+    if (endIdx === -1) throw new Error('AI mengembalikan JSON yang terpotong (kemungkinan jawabannya terlalu panjang). Coba pilih lebih sedikit ide, atau klik generate ulang.');
+    return JSON.parse(text.substring(startIdx, endIdx + 1));
   }
 
   const BREAKDOWN_PROMPT = `Kamu adalah sinematografer dan content strategist video pendek (TikTok/Reels).
@@ -429,6 +459,7 @@ Pastikan "timeline" mencakup SELURUH video dari 0 detik sampai akhir, dipecah pe
 
   const topicInput = document.getElementById('topic-input');
   const btnGenerate = document.getElementById('btn-generate');
+  let generatedIdeas = [];
   topicInput.addEventListener('input', () => {
     btnGenerate.disabled = topicInput.value.trim().length === 0;
   });
@@ -437,33 +468,98 @@ Pastikan "timeline" mencakup SELURUH video dari 0 detik sampai akhir, dipecah pe
     const topicError = document.getElementById('topic-error');
     hideError(topicError);
     setStep(3);
-    document.getElementById('loading-text').textContent = "Menyusun 10 script...";
+    document.getElementById('loading-text').textContent = "Mencari 10 ide terbaik...";
     showSection('step-loading');
 
-    const generatePrompt = `Berikut hasil bedah pola viral sebuah video pendek, lengkap timeline detik per detiknya (dalam JSON):
+    const ideasPrompt = `Berikut hasil bedah pola viral sebuah video pendek, lengkap timeline detik per detiknya (dalam JSON):
 ${JSON.stringify(breakdownData)}
 
 Pengguna ingin membuat konten baru dengan topik: "${topicInput.value.trim()}"
 
-Buatkan 10 variasi konten baru yang memakai POLA HOOK, PACING, dan PEMICU EMOSI YANG SAMA PERSIS seperti hasil bedah timeline di atas (terutama segmen yang is_hook=true), tapi isinya disesuaikan dengan topik yang diminta. Jangan ganti-ganti gaya hook-nya, cukup ganti isi/topiknya saja.
+Carikan 10 IDE TERBAIK untuk konten baru ini. Tiap ide WAJIB memakai gaya hook yang sama persis seperti video asli (terutama segmen is_hook=true), tapi isinya disesuaikan topik di atas. Untuk tahap ini cukup ide singkat dulu, BELUM perlu script lengkap.
 
 Balas HANYA JSON list valid (tanpa markdown fence, tanpa teks lain):
 [
-  {"hook": "kalimat pembuka 3 detik pertama, gaya sama seperti hook asli", "visual": "ide visual/teks di layar", "script": "naskah ucapan lengkap", "cta": "ajakan bertindak penutup"}
+  {"id": 1, "hook": "kalimat hook singkat, gaya sama seperti hook video asli", "angle": "1 kalimat penjelasan angle/konsep ide ini"}
 ]`;
 
     try {
       const payload = {
-        contents: [{ parts: [{ text: generatePrompt }] }],
+        contents: [{ parts: [{ text: ideasPrompt }] }],
+        generationConfig: { responseMimeType: "application/json" }
+      };
+      generatedIdeas = await callGemini('/api/generate', payload);
+      renderIdeas(generatedIdeas);
+      showSection('step-ideas');
+    } catch (err) {
+      showError(topicError, err.message);
+      setStep(2);
+      showSection('step-breakdown');
+    }
+  });
+
+  function renderIdeas(ideas){
+    const grid = document.getElementById('ideas-grid');
+    grid.innerHTML = "";
+    ideas.forEach((idea, i) => {
+      grid.innerHTML += `
+        <label class="border border-slate-200 rounded-xl p-4 flex gap-3 cursor-pointer hover:border-[#8B5CF6] transition fade-in" style="animation-delay:${i * 0.04}s">
+          <input type="checkbox" class="idea-check mt-1 w-4 h-4 accent-[#4D6BFE]" data-idx="${i}" checked>
+          <div>
+            <p class="font-semibold text-sm mb-1">"${idea.hook || ''}"</p>
+            <p class="text-xs text-slate-500">${idea.angle || ''}</p>
+          </div>
+        </label>`;
+    });
+    updateMakeScriptsButton();
+    document.querySelectorAll('.idea-check').forEach(cb => cb.addEventListener('change', updateMakeScriptsButton));
+  }
+
+  const btnMakeScripts = document.getElementById('btn-make-scripts');
+  function updateMakeScriptsButton(){
+    const anyChecked = document.querySelectorAll('.idea-check:checked').length > 0;
+    btnMakeScripts.disabled = !anyChecked;
+  }
+
+  document.getElementById('btn-ideas-again').addEventListener('click', () => {
+    btnGenerate.click();
+  });
+
+  btnMakeScripts.addEventListener('click', async () => {
+    const ideasError = document.getElementById('ideas-error');
+    hideError(ideasError);
+
+    const selectedIdeas = Array.from(document.querySelectorAll('.idea-check:checked'))
+      .map(cb => generatedIdeas[parseInt(cb.dataset.idx)]);
+
+    setStep(3);
+    document.getElementById('loading-text').textContent = "Menyusun script lengkap...";
+    showSection('step-loading');
+
+    const scriptPrompt = `Berikut hasil bedah pola viral video pendek (dalam JSON):
+${JSON.stringify(breakdownData)}
+
+Berikut ide-ide yang sudah dipilih untuk dijadikan script lengkap:
+${JSON.stringify(selectedIdeas)}
+
+Untuk SETIAP ide di atas (urutannya harus sama), buatkan script lengkap siap rekam: hook (boleh dipertajam dari ide), visual (ide visual/teks di layar), script (naskah ucapan lengkap), dan cta (ajakan bertindak penutup). Pakai pacing dan gaya yang sama seperti video asli.
+
+Balas HANYA JSON list valid (tanpa markdown fence, tanpa teks lain), jumlah & urutan item harus sama dengan jumlah ide yang diberikan:
+[
+  {"hook": "...", "visual": "...", "script": "...", "cta": "..."}
+]`;
+
+    try {
+      const payload = {
+        contents: [{ parts: [{ text: scriptPrompt }] }],
         generationConfig: { responseMimeType: "application/json" }
       };
       const scripts = await callGemini('/api/generate', payload);
       renderScripts(scripts);
       showSection('step-scripts');
     } catch (err) {
-      showError(topicError, err.message);
-      setStep(2);
-      showSection('step-breakdown');
+      showError(ideasError, err.message);
+      showSection('step-ideas');
     }
   });
 
